@@ -1,0 +1,106 @@
+# This file is interpreted as shell script.
+# Put your custom iptables rules here, they will
+# be executed with each firewall (re-)start.
+
+# Internal uci firewall chains are flushed and recreated on reload, so
+# put custom rules into the root chains e.g. INPUT or FORWARD or into the
+# special user chains, e.g. input_wan_rule or postrouting_lan_rule.
+ipset destroy
+
+ipset create gfwlist hash:ip
+ipset create mkcp hash:ip
+ipset create gfw hash:net
+
+vps="1.1.1.1"
+LAN="192.168.1.0/24"
+
+
+# for Telegram
+ipset add gfw 67.198.55.0/24
+ipset add gfw 91.108.4.0/22
+ipset add gfw 91.108.8.0/22
+ipset add gfw 91.108.12.0/22
+ipset add gfw 91.108.16.0/22
+ipset add gfw 91.108.20.0/22
+ipset add gfw 91.108.36.0/23
+ipset add gfw 91.108.38.0/23
+ipset add gfw 91.108.56.0/22
+ipset add gfw 109.239.140.0/24
+ipset add gfw 149.154.160.0/20
+ipset add gfw 149.154.164.0/22
+ipset add gfw 149.154.168.0/22
+ipset add gfw 149.154.172.0/22
+
+# for whatsapp
+ipset add gfw 18.194.0.0/15
+ipset add gfw 34.224.0.0/12
+
+# for Google
+ipset add gfw 8.8.8.0/24
+ipset add gfw 35.191.0.0/16
+ipset add gfw 64.233.160.0/19
+ipset add gfw 66.102.0.0/20
+ipset add gfw 66.249.80.0/20
+ipset add gfw 72.14.192.0/18
+ipset add gfw 74.125.0.0/16
+ipset add gfw 108.177.8.0/21
+ipset add gfw 108.177.96.0/19
+ipset add gfw 130.211.0.0/22
+ipset add gfw 172.217.0.0/19
+ipset add gfw 172.217.32.0/20
+ipset add gfw 172.217.128.0/19
+ipset add gfw 172.217.160.0/20
+ipset add gfw 172.217.192.0/19
+ipset add gfw 173.194.0.0/16
+ipset add gfw 209.85.128.0/17
+ipset add gfw 216.58.192.0/19
+ipset add gfw 216.239.32.0/19
+
+# Cloudflare
+ipset add gfw 1.0.0.0/24
+ipset add gfw 1.1.1.0/24
+
+# About GitHub's IP addresses
+ipset add gfw 192.30.252.0/22
+ipset add gfw 185.199.108.0/22
+ipset add gfw 140.82.112.0/20
+ipset add gfw 13.229.188.59/32
+ipset add gfw 13.250.177.223/32
+ipset add gfw 18.194.104.89/32
+ipset add gfw 18.195.85.27/32
+ipset add gfw 35.159.8.160/32
+ipset add gfw 52.74.223.119/32
+
+# China Sites
+ipset create china hash:net
+ipset add china $vps
+
+# for china ip
+if [ -e /etc/gfw/china_ip_list.txt ]; then
+	for i in $(cat /etc/gfw/china_ip_list.txt)
+	do
+		ipset add china $i
+	done
+fi
+
+iptables -t nat -A prerouting_rule -p tcp -m set --match-set china dst -j RETURN
+iptables -t nat -A prerouting_rule -s $LAN -p tcp -m set --match-set mkcp dst -j REDIRECT --to-ports 1075
+iptables -t nat -A prerouting_rule -s $LAN -p tcp -m set --match-set gfw dst -j REDIRECT --to-ports 1090
+iptables -t nat -A prerouting_rule -s $LAN -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-ports 1090
+iptables -t nat -A OUTPUT -p tcp -m set --match-set china dst -j RETURN
+iptables -t nat -A OUTPUT -s $LAN -p tcp -m set --match-set gfw dst -j REDIRECT --to-ports 1090
+iptables -t nat -A OUTPUT -s $LAN -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-ports 1090
+iptables -t nat -A OUTPUT -s 100.64.0.0/16 -p tcp -m set --match-set gfw dst -j REDIRECT --to-ports 1090
+iptables -t nat -A OUTPUT -s 100.64.0.0/16 -p tcp -m set --match-set gfwlist dst -j REDIRECT --to-ports 1090
+
+# ip route add local default dev lo table 100
+# config in network
+# ip rule add fwmark 1 lookup 100
+
+# UDP
+iptables -t mangle -N SHADOWSOCKS
+iptables -t mangle -A SHADOWSOCKS -p udp -m set --match-set gfw dst -j TPROXY --on-port 1090 --tproxy-mark 0x01/0x01
+iptables -t mangle -A SHADOWSOCKS -p udp -m set --match-set gfwlist dst -j TPROXY --on-port 1090 --tproxy-mark 0x01/0x01
+iptables -t mangle -A PREROUTING -p udp -j SHADOWSOCKS
+# iptables -t mangle -A OUTPUT -j SHADOWSOCKS
+
