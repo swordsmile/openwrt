@@ -1,0 +1,16 @@
+[Unit]
+Description=udp2raw Client Service
+After=network.target
+Wants=network.target
+
+[Service]
+User=nobody
+Group=nobody
+Type=simple
+ExecStart=/usr/local/bin/udp2raw_amd64_hw_aes --conf-file /etc/udp2raw/udp2raw_wireguard.conf
+ExecStartPre=+/usr/bin/iptables -I INPUT -s $VPS_IP -p tcp -m tcp --sport 5152 -j DROP
+ExecStopPost=+/usr/bin/iptables -D INPUT -s $VPS_IP -p tcp -m tcp --sport 5152 -j DROP
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

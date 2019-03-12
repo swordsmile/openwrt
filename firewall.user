@@ -104,3 +104,5 @@ iptables -t mangle -A SHADOWSOCKS -p udp -m set --match-set gfwlist dst -j TPROX
 iptables -t mangle -A PREROUTING -p udp -j SHADOWSOCKS
 # iptables -t mangle -A OUTPUT -j SHADOWSOCKS
 
+# SNAT
+iptables -t nat -A postrouting_lan_rule -s 192.168.0.0/16 -d 172.16.0.0/12 -o eth0.3 -j SNAT --to-source 172.16.x.x

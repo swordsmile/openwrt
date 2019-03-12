@@ -1,0 +1,12 @@
+
+config rule
+	option mark	'0x1'
+	option lookup	'100'
+	option priority	'10000'
+
+config route 'tproxy'
+	option interface 'loopback'
+	option target '0.0.0.0'
+	option netmask '0.0.0.0'
+	option table 'tproxy'
+	option type 'local'

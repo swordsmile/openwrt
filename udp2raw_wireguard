@@ -1,0 +1,21 @@
+#!/bin/sh /etc/rc.common
+
+START=95
+
+SERVICE_USE_PID=1
+SERVICE_WRITE_PID=1
+SERVICE_DAEMONIZE=1
+SERVICE_PID_FILE=/var/run/udp2raw_wireguard.pid
+CONFIG=/etc/udp2raw/udp2raw_wireguard.conf
+
+start() {
+    # Proxy Mode
+    service_start /opt/bin/udp2raw_amd64_hw_aes --conf-file $CONFIG
+    iptables -A input_rule -s VPS_IP/32 -p tcp -m tcp --sport 5152 -m comment --comment "drop udp2raw_wg packets" -j DROP
+}
+
+stop() {
+    # Proxy Mode
+    service_stop /opt/bin/udp2raw_amd64_hw_aes
+    iptables -D input_rule -s VPS_IP/32 -p tcp -m tcp --sport 5152 -m comment --comment "drop udp2raw_wg packets" -j DROP
+}
